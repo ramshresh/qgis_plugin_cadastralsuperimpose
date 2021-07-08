@@ -1,0 +1,113 @@
+logger("TRY {line}".format(line=get_line(currentframe(), )))
+            
+            logger("CHECK LINE {line} OK".format(line=get_line(currentframe())))
+            if (self.vLayer_plu is not None):
+                logger("CHECK LINE {line} OK".format(line=get_line(currentframe())))
+                logger("1")
+                sindex_plu = QgsSpatialIndex()
+                logger("CHECK LINE {line} OK".format(line=get_line(currentframe())))
+                sindex_plu = QgsSpatialIndex(self.vLayer_plu.getFeatures())
+                logger("CHECK LINE {line} OK".format(line=get_line(currentframe())))
+                
+            if (self.vLayer_luz is not None):
+                logger("CHECK LINE {line} OK".format(line=get_line(currentframe())))
+                logger("2")
+                sindex_luz = QgsSpatialIndex()
+                logger("CHECK LINE {line} OK".format(line=get_line(currentframe())))
+                sindex_luz = QgsSpatialIndex(self.vLayer_luz.getFeatures())
+                logger("CHECK LINE {line} OK".format(line=get_line(currentframe())))
+            logger("CHECK LINE {line} OK".format(line=get_line(currentframe())))
+            logger("3")
+            logger(str(self.vLayer_parcel))
+            if (self.vLayer_parcel is None):
+                logger("CHECK LINE {line} OK".format(line=get_line(currentframe())))
+                return False
+            logger("CHECK LINE {line} OK".format(line=get_line(currentframe())))
+            
+            
+            self.total = self.vLayer_parcel.featureCount()
+            logger("CHECK LINE {line} OK".format(line=get_line(currentframe())))
+            logger("TRY {line}, {total_parcels}".format(line=get_line(currentframe()), total_parcels=self.total))
+            logger("CHECK LINE {line} OK".format(line=get_line(currentframe())))
+            parcel_features = self.vLayer_parcel.getFeatures()
+            logger("CHECK LINE {line} OK".format(line=get_line(currentframe())))
+            #https://gis.stackexchange.com/questions/156096/creating-new-empty-memory-layer-with-fields-scheme-from-other-layer-in-qgis
+            # Get its list of fields
+            parcelFields = self.vLayer_parcel.dataProvider().fields()
+            logger("CHECK LINE {line} OK".format(line=get_line(currentframe())))
+            # Convert its geometry type enum to a string we can pass to
+            # QgsVectorLayer's constructor
+            parcelLayerGeometryType = ['Point', 'Line', 'Polygon'][self.vLayer_parcel.geometryType()]
+            logger("CHECK LINE {line} OK".format(line=get_line(currentframe())))
+             # Convert its CRS to a string we can pass to QgsVectorLayer's constructor
+            parcelLayerCRS = self.vLayer_parcel.crs().authid()
+            
+            logger("CHECK LINE {line} OK".format(line=get_line(currentframe())))
+            
+            
+            
+            if self.override_input:
+                logger("CHECK LINE {line} OK".format(line=get_line(currentframe())))
+                self.outlayer = self.vLayer_parcel
+                logger("CHECK LINE {line} OK".format(line=get_line(currentframe())))
+            else:
+                logger("CHECK LINE {line} OK".format(line=get_line(currentframe())))
+                # Make the output layer
+                self.vLayer_parcel.selectAll()
+                logger("CHECK LINE {line} OK".format(line=get_line(currentframe())))
+                self.outlayer = processing.run("native:saveselectedfeatures", {'INPUT': self.vLayer_parcel, 'OUTPUT': 'memory:',})['OUTPUT']
+                logger("CHECK LINE {line} OK".format(line=get_line(currentframe())))
+                self.outlayer.setName(self.vLayer_parcel.name() + u'_copy')
+                logger("CHECK LINE {line} OK".format(line=get_line(currentframe())))
+                self.vLayer_parcel.removeSelection()
+                logger("CHECK LINE {line} OK".format(line=get_line(currentframe())))
+                
+                    
+                
+                
+            logger("CHECK LINE {line} OK".format(line=get_line(currentframe())))
+            # Add attribute Fields
+            if self.outlayer.dataProvider().fieldNameIndex(self.attr_luz_all) == -1: #https://gis.stackexchange.com/questions/308235/writing-pyqgis-script-to-modify-layer-add-field-and-fill-it-inside-qgis
+                logger("CHECK LINE {line} OK".format(line=get_line(currentframe())))
+                self.outlayer.dataProvider().addAttributes([QgsField(self.attr_luz_all, QVariant.String)]) 
+                logger("CHECK LINE {line} OK".format(line=get_line(currentframe())))
+                self.outlayer.updateFields()
+                logger("CHECK LINE {line} OK".format(line=get_line(currentframe())))
+            logger("CHECK LINE {line} OK".format(line=get_line(currentframe())))
+            id_new_col_attr_luz_all= self.outlayer.dataProvider().fieldNameIndex(self.attr_luz_all)
+            logger("CHECK LINE {line} OK".format(line=get_line(currentframe())))
+     
+
+            
+            logger("TRY {line}, self.attr_luz= {attr_luz}".format(line=get_line(currentframe()), attr_luz=self.attr_luz))
+            logger("TRY {line}, self.outlayer= {outlayer}".format(line=get_line(currentframe()), outlayer=self.outlayer))
+            logger("TRY {line}, self.outlayer.featureCount()= {outlayer_featureCount}".format(line=get_line(currentframe()), outlayer_featureCount=self.outlayer.featureCount()))
+            
+            for parcel in self.outlayer.getFeatures():
+                self.iterations = self.iterations+1
+                parcel_geom = parcel.geometry()
+                """
+                # Land Use Zoning
+                if sindex_luz is not None:
+                    attr_luz_types = []
+                    candidateIDs_luz = sindex_luz.intersects(parcel_geom.boundingBox())
+                    candFeatureIterator_luz = self.vLayer_luz.getFeatures(QgsFeatureRequest(candidateIDs_luz))
+                    for luz in candFeatureIterator_luz:
+                        luz_geom = luz.geometry()
+                        if parcel_geom.intersects(luz_geom):
+                            intersectsGeom_luz = parcel_geom.intersection(luz_geom)
+                            percentagetArea_luz = (intersectsGeom_luz.area()/parcel_geom.area())*100
+                            attr_type_luz = luz[self.luz_field] 
+                            attr_luz_types.append({attr_type_luz: percentagetArea_luz})
+                        else:
+                            pass
+                        
+                    attrib_luz_all_value = {id_new_col_attr_luz_all:json.dumps(attr_luz_types)}
+                    self.outlayer.dataProvider().changeAttributeValues({parcel.id():attrib_luz_all_value})
+                    logger("TRY {line}, attrib_luz_all_value = {attrib_luz_all_value}".format(line=get_line(currentframe()), attrib_luz_all_value=attrib_luz_all_value))
+                """
+                # use setProgress to report progress
+                self.setProgress(self.iterations/self.total*100)
+                # check isCanceled() to handle cancellation
+                logger("ITERATION COMPLETED {line}, iterations = {iterations}".format(line=get_line(currentframe()), iterations=self.iterations))
+            
