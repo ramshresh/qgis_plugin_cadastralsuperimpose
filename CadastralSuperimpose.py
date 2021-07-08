@@ -23,8 +23,8 @@
 """
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QAction, QFileDialog
-
+from qgis.PyQt.QtWidgets import QAction, QFileDialog,QMessageBox,QSizePolicy,QGridLayout
+from qgis.gui import QgsMessageBar
 # Initialize Qt resources from file resources.py
 from .resources import *
 # Import the code for the dialog
@@ -50,7 +50,6 @@ class CadastralSuperimpose:
             application at run time.
         :type iface: QgsInterface
         """
-        
         self.plugin = self
         # Save reference to the QGIS interface
         self.iface = iface
@@ -76,13 +75,16 @@ class CadastralSuperimpose:
         # Must be set in initGui() to survive plugin reloads
         self.first_start = None
         
+        #self.bar = QgsMessageBar()
+        #self.bar.setSizePolicy( QSizePolicy.Minimum, QSizePolicy.Fixed )
+        
         self.context = Context(
             plugin = self.plugin,
             iface = self.iface,
             application = QgsApplication,
             project = QgsProject            
             )
-        
+        self.errors={}
         self.parcel_layers = []
         self.plu_layers = []
         self.luz_layers = []
@@ -91,7 +93,7 @@ class CadastralSuperimpose:
         self.luz_fields = []
 
         self.selected_outfile = ""
-        self.formData = None
+      
         
 
     # noinspection PyMethodMayBeStatic
@@ -197,7 +199,6 @@ class CadastralSuperimpose:
         # will be set False in run()
         self.first_start = True
 
-
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
         for action in self.actions:
@@ -209,7 +210,6 @@ class CadastralSuperimpose:
     def show_form_data(self):
         err = traceback.print_exc()
         if self.formData is not None:
-            self.formData.update()
             self.dlg.textBrowser_logs.setText("ERROR: {}\nDEBUG:\n{}".format(err, json.dumps(self.formData.getData())))
 
     def fetch_plu_fields(self):
@@ -303,7 +303,6 @@ class CadastralSuperimpose:
         self.fetch_plu_fields()
     def onChange_comboBox_luz(self):
         self.fetch_luz_fields()
-
     def onCheckBox_use_plu_changed(self):
         use_plu = self.dlg.checkBox_use_plu.isChecked()
         default_fields = self.dlg.checkBox_default_fields.isChecked()
@@ -349,7 +348,85 @@ class CadastralSuperimpose:
         else:
             self.dlg.pushButton_edit_add_fields.setStyleSheet("");
 
+    def inputCheck(self):
+        self.errors = {}
 
+        if self.plugin.dlg.comboBox_parcel.currentIndex() == -1:
+            self.errors['vLayer_parcel'] = "required"
+
+        if self.plugin.dlg.checkBox_use_plu.checkState():
+            if self.plugin.dlg.comboBox_plu.currentIndex() == -1:
+                self.errors['vLayer_plu'] = "required"
+            elif self.plugin.dlg.comboBox_plu_field.currentIndex() == -1:
+                self.errors['plu_field'] = "required"
+            elif self.plugin.dlg.checkBox_add_fields.checkState():
+                if self.dlg.lineEdit_attr_plu_all.text() == '':
+                    self.errors['attr_plu_all'] = "required"
+                if self.dlg.lineEdit_attr_plu_max_arp.text() == '':
+                    self.errors['attr_plu_max_areap'] = "required"
+        
+        if self.plugin.dlg.checkBox_use_luz.checkState():
+            if self.plugin.dlg.comboBox_luz.currentIndex() == -1:
+                self.errors['vLayer_luz'] = "required"
+            elif self.plugin.dlg.comboBox_luz_field.currentIndex() == -1:
+                self.errors['luz_field'] = "required"
+
+            elif self.plugin.dlg.checkBox_add_fields.checkState():
+                if self.dlg.lineEdit_attr_luz_all.text() == '':
+                    self.errors['attr_luz_all'] = "required"
+                if self.dlg.lineEdit_attr_luz_max_arp.text() == '':
+                    self.errors['attr_luz_max_areap'] = "required"
+
+        if not self.dlg.checkBox_override_input.checkState():
+            if self.dlg.lineEdit_outfile.text() == '':
+                self.errors['outfile'] = "required"
+
+        if len(self.errors.keys())>0:
+            #self.bar.pushMessage("Validation Error!", "Please review input", level=Qgis.Info)
+            
+            #QMessageBox.information(None, "Validation Error!", "Please review input")
+            
+            return False
+        
+            
+        return True
+    
+    def hide_errors(self):
+        self.dlg.error_vLayer_parcel.setVisible(False)
+        self.dlg.error_vLayer_plu.setVisible(False)
+        self.dlg.error_vLayer_luz.setVisible(False)
+        self.dlg.error_plu_field.setVisible(False)
+        self.dlg.error_luz_field.setVisible(False)
+        self.dlg.error_attr_plu.setVisible(False)
+        self.dlg.error_attr_luz.setVisible(False)
+        self.dlg.error_attr_plu_all.setVisible(False)
+        self.dlg.error_attr_luz_all.setVisible(False)
+        self.dlg.error_attr_plu_max_areap.setVisible(False)
+        self.dlg.error_attr_luz_max_areap.setVisible(False)
+        self.dlg.error_outfile.setVisible(False)
+    def show_errors(self):
+        self.hide_errors()
+        for key in self.errors:
+            getattr(self.dlg, 'error_{}'.format(key)).setVisible(True)
+        
+    def execute(self):
+        # Run the dialog event loop
+        result = self.dlg.exec_()
+        # See if OK was pressed
+        if result:
+            # Do something useful here - delete the line containing pass and
+            # substitute with your code.
+            if self.inputCheck():
+                formData = FormData(self.plugin)
+                ##UsagePattern
+                globals()['task1'] = CadastralSuperimposeTask('Task - Duration 20 ms per iter',formData, qgsProject = QgsProject)
+                QgsApplication.taskManager().addTask(globals()['task1'])
+            else:
+                self.show_errors()
+                self.dlg.show()
+                self.execute()
+
+        
     def run(self):
         """Run method that performs all the real work"""
 
@@ -358,7 +435,7 @@ class CadastralSuperimpose:
         if self.first_start == True:
             self.first_start = False
             self.dlg = CadastralSuperimposeDialog()
-            
+                    
             self.dlg.pushButton_debug.clicked.connect(self.show_form_data)
             self.dlg.pushButton_refreshLayers.clicked.connect(self.fetch_layers_all)
             self.dlg.pushButton_edit_default_fields.clicked.connect(self.toggle_default_fields_editable)
@@ -374,33 +451,11 @@ class CadastralSuperimpose:
 
             self.dlg.checkBox_override_input.stateChanged.connect(self.onCheckBox_override_input_changed)
             self.dlg.checkBox_add_fields.stateChanged.connect(self.onCheckBox_add_fields_changed)
+            self.hide_errors()
 
-        
-        self.fetch_layers_all()
-        
-        
-        self.formData = FormData(self.plugin)
-        
-        
-        self.dlg.textBrowser_logs.setText(json.dumps(self.formData.getData()))
-        
+        self.fetch_layers_all()    
         # show the dialog
         self.dlg.show()
-        # Run the dialog event loop
-        result = self.dlg.exec_()
-        # See if OK was pressed
-        if result:
-            # Do something useful here - delete the line containing pass and
-            # substitute with your code.
-       
-
-            self.formData.update()
-            if (self.formData.validate()):
-                message = "Status: {status} \n formData = {formData}".format(status="Validation - SUCCESS\n", formData=json.dumps(self.formData.getData()))
-            logger(message)
-
-            
-
-            ##UsagePattern
-            globals()['task1'] = CadastralSuperimposeTask('Task - Duration 20 ms per iter',self.formData, qgsProject = QgsProject)
-            QgsApplication.taskManager().addTask(globals()['task1'])
+        self.execute()
+        
+        

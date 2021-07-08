@@ -1,40 +1,7 @@
 from .utils import logger
 class FormData():
     def __init__(self, plugin):
-
         self.plugin = plugin
-        self.vLayer_parcel =  None
-        self.vLayer_plu = None
-        self.vLayer_luz = None
-        self.plu_field = None
-        self.luz_field = None
-        
-        self.attr_plu = None
-        self.attr_luz = None
-        self.attr_plu_all = None
-        self.attr_luz_all = None
-        self.attr_plu_max_arp = None
-        self.attr_luz_max_arp = None
-        self.outfile = None
-        
-        self.plu_layers = []
-        self.luz_layers = []
-        self.parcel_layers = []
-        self.plu_fields = []
-        self.luz_fields = []
-
-
-        self.use_plu = None
-        self.use_luz = None
-        self.override_input = None
-        self.default_fields = None
-        self.add_fields = None
-        
-    def validate(self):
-        return True
-
-    def update(self):
-        
         self.parcel_layers = self.plugin.parcel_layers
         self.plu_layers = self.plugin.plu_layers
         self.luz_layers = self.plugin.luz_layers
@@ -61,6 +28,8 @@ class FormData():
         self.override_input =self.plugin.dlg.checkBox_override_input.checkState() 
         self.default_fields = self.plugin.dlg.checkBox_default_fields.checkState() 
         self.add_fields = self.plugin.dlg.checkBox_add_fields.checkState()
+    
+        
 
     def getData(self):
 

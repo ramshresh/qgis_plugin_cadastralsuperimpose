@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import random, processing, json, os
 from time import sleep
+import operator
 
 from qgis.core import (
     QgsApplication, QgsTask, QgsMessageLog,Qgis, QgsSpatialIndex,QgsField,QgsFeatureRequest,QgsVectorFileWriter, QgsVectorLayer
@@ -33,12 +34,10 @@ class CadastralSuperimposeTask(QgsTask):
                                      self.description()),
                                  MESSAGE_CATEGORY, Qgis.Info)
         
-        logger("Inside task")
-        try:
-            self.formData.update()
-            
+        #logger("Inside task")
+        try:   
             vLayer_parcel = self.formData.vLayer_parcel
-            logger(str(vLayer_parcel))
+            #logger(str(vLayer_parcel))
             vLayer_plu = self.formData.vLayer_plu
             vLayer_luz = self.formData.vLayer_luz
 
@@ -76,26 +75,32 @@ class CadastralSuperimposeTask(QgsTask):
             mem_layer.setName(vLayer_parcel.name()+u'_copy')
             vLayer_parcel.removeSelection()
 
-        
+
             # Add attribute Fields
-            if mem_layer.dataProvider().fieldNameIndex(attr_plu) == -1: #https://gis.stackexchange.com/questions/308235/writing-pyqgis-script-to-modify-layer-add-field-and-fill-it-inside-qgis
-                mem_layer.dataProvider().addAttributes([QgsField(attr_plu, QVariant.String)]) 
-                mem_layer.updateFields()
-            if mem_layer.dataProvider().fieldNameIndex(attr_luz) == -1: #https://gis.stackexchange.com/questions/308235/writing-pyqgis-script-to-modify-layer-add-field-and-fill-it-inside-qgis
-                mem_layer.dataProvider().addAttributes([QgsField(attr_luz, QVariant.String)]) 
-                mem_layer.updateFields()
-            if mem_layer.dataProvider().fieldNameIndex(attr_plu_all) == -1: #https://gis.stackexchange.com/questions/308235/writing-pyqgis-script-to-modify-layer-add-field-and-fill-it-inside-qgis
-                mem_layer.dataProvider().addAttributes([QgsField(attr_plu_all, QVariant.String)]) 
-                mem_layer.updateFields()
-            if mem_layer.dataProvider().fieldNameIndex(attr_luz_all) == -1: #https://gis.stackexchange.com/questions/308235/writing-pyqgis-script-to-modify-layer-add-field-and-fill-it-inside-qgis
-                mem_layer.dataProvider().addAttributes([QgsField(attr_luz_all, QVariant.String)]) 
-                mem_layer.updateFields()
-            if mem_layer.dataProvider().fieldNameIndex(attr_plu_max_arp) == -1: #https://gis.stackexchange.com/questions/308235/writing-pyqgis-script-to-modify-layer-add-field-and-fill-it-inside-qgis
-                mem_layer.dataProvider().addAttributes([QgsField(attr_plu_max_arp, QVariant.String)]) 
-                mem_layer.updateFields()
-            if mem_layer.dataProvider().fieldNameIndex(attr_luz_max_arp) == -1: #https://gis.stackexchange.com/questions/308235/writing-pyqgis-script-to-modify-layer-add-field-and-fill-it-inside-qgis
-                mem_layer.dataProvider().addAttributes([QgsField(attr_luz_max_arp, QVariant.String)]) 
-                mem_layer.updateFields()
+            if self.formData.use_plu:
+                if self.formData.default_fields:
+                    if mem_layer.dataProvider().fieldNameIndex(attr_plu) == -1: #https://gis.stackexchange.com/questions/308235/writing-pyqgis-script-to-modify-layer-add-field-and-fill-it-inside-qgis
+                        mem_layer.dataProvider().addAttributes([QgsField(attr_plu, QVariant.String)]) 
+                        mem_layer.updateFields()
+                if self.formData.add_fields:
+                    if mem_layer.dataProvider().fieldNameIndex(attr_plu_all) == -1: #https://gis.stackexchange.com/questions/308235/writing-pyqgis-script-to-modify-layer-add-field-and-fill-it-inside-qgis
+                        mem_layer.dataProvider().addAttributes([QgsField(attr_plu_all, QVariant.String)]) 
+                        mem_layer.updateFields()
+                    if mem_layer.dataProvider().fieldNameIndex(attr_plu_max_arp) == -1: #https://gis.stackexchange.com/questions/308235/writing-pyqgis-script-to-modify-layer-add-field-and-fill-it-inside-qgis
+                        mem_layer.dataProvider().addAttributes([QgsField(attr_plu_max_arp, QVariant.String)]) 
+                        mem_layer.updateFields()
+            if self.formData.use_luz:
+                if self.formData.default_fields:
+                    if mem_layer.dataProvider().fieldNameIndex(attr_luz) == -1: #https://gis.stackexchange.com/questions/308235/writing-pyqgis-script-to-modify-layer-add-field-and-fill-it-inside-qgis
+                        mem_layer.dataProvider().addAttributes([QgsField(attr_luz, QVariant.String)]) 
+                        mem_layer.updateFields()
+                if self.formData.add_fields:
+                    if mem_layer.dataProvider().fieldNameIndex(attr_luz_all) == -1: #https://gis.stackexchange.com/questions/308235/writing-pyqgis-script-to-modify-layer-add-field-and-fill-it-inside-qgis
+                        mem_layer.dataProvider().addAttributes([QgsField(attr_luz_all, QVariant.String)]) 
+                        mem_layer.updateFields()                
+                    if mem_layer.dataProvider().fieldNameIndex(attr_luz_max_arp) == -1: #https://gis.stackexchange.com/questions/308235/writing-pyqgis-script-to-modify-layer-add-field-and-fill-it-inside-qgis
+                        mem_layer.dataProvider().addAttributes([QgsField(attr_luz_max_arp, QVariant.String)]) 
+                        mem_layer.updateFields()
             
             attr_plu_colID= mem_layer.dataProvider().fieldNameIndex(attr_plu)
             attr_luz_colID = mem_layer.dataProvider().fieldNameIndex(attr_luz)
@@ -104,11 +109,10 @@ class CadastralSuperimposeTask(QgsTask):
             attr_plu_max_arp_colID = mem_layer.dataProvider().fieldNameIndex(attr_plu_max_arp)
             attr_luz_max_arp_colID= mem_layer.dataProvider().fieldNameIndex(attr_luz_max_arp)
 
+            #logger('attr_luz_all_colID: {} '.format(attr_luz_all_colID))
             self.total = mem_layer.featureCount()
-            logger("total = {}".format(self.total))
-            if not (self.formData.use_plu or self.formData.use_plu):
-                self.exception = Exception('PLU and/or LUZ not selected')
-                return False
+            #logger("total = {}".format(self.total))
+            
             
          
             if vLayer_parcel !="":
@@ -130,9 +134,22 @@ class CadastralSuperimposeTask(QgsTask):
                                         plu_types.append({plu_type:area_percent})
                                 else:
                                     pass
-                        attr_plu_all_vals = {attr_plu_all_colID: json.dumps(group_key_val(plu_types))}
-                        mem_layer.dataProvider().changeAttributeValues({parcel.id(): attr_plu_all_vals})
-                    
+                        grouped_plu_types = group_key_val(plu_types)
+                        if(attr_plu_all_colID != -1):
+                            attr_plu_all_val= {attr_plu_all_colID: json.dumps(grouped_plu_types)}
+                            mem_layer.dataProvider().changeAttributeValues({parcel.id(): attr_plu_all_val})
+
+                        if (attr_plu_colID != -1):
+                            attr_plu_val= {attr_plu_colID: max(grouped_plu_types, key=grouped_plu_types.get)}
+                            mem_layer.dataProvider().changeAttributeValues({parcel.id(): attr_plu_val})
+                
+                        if (attr_plu_max_arp_colID != -1):
+                            attr_plu_max_arp_val = {attr_plu_max_arp_colID: max(grouped_plu_types.values())}
+                            mem_layer.dataProvider().changeAttributeValues({parcel.id(): attr_plu_max_arp_val})
+                        
+                        
+                        
+
                     if self.formData.use_luz:
                         luz_types = []
                         for candidateID_luz in candidateIDs_luz:
@@ -147,11 +164,19 @@ class CadastralSuperimposeTask(QgsTask):
                                         luz_types.append({luz_type:area_percent})
                                 else:
                                     pass
-                
-                        attr_luz_all_vals = {attr_luz_all_colID: json.dumps(group_key_val(luz_types))}
-                        mem_layer.dataProvider().changeAttributeValues({parcel.id():attr_luz_all_vals})   
+                        grouped_luz_types = group_key_val(luz_types)
+                        if(attr_luz_all_colID != -1):
+                            attr_luz_all_val = {attr_luz_all_colID: json.dumps(grouped_luz_types)}
+                            mem_layer.dataProvider().changeAttributeValues({parcel.id():attr_luz_all_val})   
 
-            
+                        if (attr_luz_colID != -1):
+                            attr_luz_val= {attr_luz_colID: max(grouped_luz_types, key=grouped_luz_types.get)}
+                            mem_layer.dataProvider().changeAttributeValues({parcel.id(): attr_luz_val})
+                
+                        if (attr_luz_max_arp_colID != -1):
+                            attr_luz_max_arp_val = {attr_luz_max_arp_colID: max(grouped_luz_types.values())}
+                            mem_layer.dataProvider().changeAttributeValues({parcel.id(): attr_luz_max_arp_val})
+                        
                     self.iterations += 1
                     # use setProgress to report progress
                     self.setProgress(self.iterations / self.total*100)
@@ -172,13 +197,14 @@ class CadastralSuperimposeTask(QgsTask):
                 layer = QgsVectorLayer(outfile, layer_name, "ogr")
                 if layer.isValid():
                     self.qgsProject.instance().addMapLayers([layer])
+            
             else:
-                self.exception = Exception('PLU and/or LUZ not selected')
+                self.exception = Exception('Parcel not selected')
                 return False
-
+            
 
         except Exception as e:
-            logger("{e}".format(e=e))
+            #logger("{e}".format(e=e))
             self.exception = e
             raise e
         return True
@@ -194,12 +220,13 @@ class CadastralSuperimposeTask(QgsTask):
         result is the return value from self.run.
         """
         if result:
-            logger("Finished")
+            #logger("Finished")
             QgsMessageLog.logMessage(
                 'RandomTask "{name}" completed\n'.format(
                   name=self.description(),
                   ),
               MESSAGE_CATEGORY, Qgis.Success)
+              
         else:
             if self.exception is None:
                 QgsMessageLog.logMessage(
