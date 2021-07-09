@@ -54,12 +54,12 @@ class CadastralSuperimposeTask(QgsTask):
             attr_luz_max_arp = self.formData.attr_luz_max_arp
 
             outfile = self.formData.outfile
-
-            sindex_plu = QgsSpatialIndex()
-            sindex_plu = QgsSpatialIndex(vLayer_plu.getFeatures())
-
-            sindex_luz = QgsSpatialIndex()
-            sindex_luz = QgsSpatialIndex(vLayer_luz.getFeatures())
+            if self.formData.use_plu:
+                sindex_plu = QgsSpatialIndex()
+                sindex_plu = QgsSpatialIndex(vLayer_plu.getFeatures())
+            if self.formData.use_luz:
+                sindex_luz = QgsSpatialIndex()
+                sindex_luz = QgsSpatialIndex(vLayer_luz.getFeatures())
 
             #https://gis.stackexchange.com/questions/156096/creating-new-empty-memory-layer-with-fields-scheme-from-other-layer-in-qgis
             # Get its list of fields
@@ -134,19 +134,20 @@ class CadastralSuperimposeTask(QgsTask):
                                         plu_types.append({plu_type:area_percent})
                                 else:
                                     pass
-                        grouped_plu_types = group_key_val(plu_types)
-                        if(attr_plu_all_colID != -1):
-                            attr_plu_all_val= {attr_plu_all_colID: json.dumps(grouped_plu_types)}
-                            mem_layer.dataProvider().changeAttributeValues({parcel.id(): attr_plu_all_val})
+                        if(len(plu_types)>0):        
+                            grouped_plu_types = group_key_val(plu_types)
+                            if(attr_plu_all_colID != -1):
+                                attr_plu_all_val= {attr_plu_all_colID: json.dumps(grouped_plu_types)}
+                                mem_layer.dataProvider().changeAttributeValues({parcel.id(): attr_plu_all_val})
 
-                        if (attr_plu_colID != -1):
-                            attr_plu_val= {attr_plu_colID: max(grouped_plu_types, key=grouped_plu_types.get)}
-                            mem_layer.dataProvider().changeAttributeValues({parcel.id(): attr_plu_val})
-                
-                        if (attr_plu_max_arp_colID != -1):
-                            attr_plu_max_arp_val = {attr_plu_max_arp_colID: max(grouped_plu_types.values())}
-                            mem_layer.dataProvider().changeAttributeValues({parcel.id(): attr_plu_max_arp_val})
-                        
+                            if (attr_plu_colID != -1):
+                                attr_plu_val= {attr_plu_colID: max(grouped_plu_types, key=grouped_plu_types.get)}
+                                mem_layer.dataProvider().changeAttributeValues({parcel.id(): attr_plu_val})
+                    
+                            if (attr_plu_max_arp_colID != -1):
+                                attr_plu_max_arp_val = {attr_plu_max_arp_colID: max(grouped_plu_types.values())}
+                                mem_layer.dataProvider().changeAttributeValues({parcel.id(): attr_plu_max_arp_val})
+                            
                         
                         
 
@@ -164,19 +165,20 @@ class CadastralSuperimposeTask(QgsTask):
                                         luz_types.append({luz_type:area_percent})
                                 else:
                                     pass
-                        grouped_luz_types = group_key_val(luz_types)
-                        if(attr_luz_all_colID != -1):
-                            attr_luz_all_val = {attr_luz_all_colID: json.dumps(grouped_luz_types)}
-                            mem_layer.dataProvider().changeAttributeValues({parcel.id():attr_luz_all_val})   
+                        if(len(luz_types)>0):
+                            grouped_luz_types = group_key_val(luz_types)
+                            if(attr_luz_all_colID != -1):
+                                attr_luz_all_val = {attr_luz_all_colID: json.dumps(grouped_luz_types)}
+                                mem_layer.dataProvider().changeAttributeValues({parcel.id():attr_luz_all_val})   
 
-                        if (attr_luz_colID != -1):
-                            attr_luz_val= {attr_luz_colID: max(grouped_luz_types, key=grouped_luz_types.get)}
-                            mem_layer.dataProvider().changeAttributeValues({parcel.id(): attr_luz_val})
-                
-                        if (attr_luz_max_arp_colID != -1):
-                            attr_luz_max_arp_val = {attr_luz_max_arp_colID: max(grouped_luz_types.values())}
-                            mem_layer.dataProvider().changeAttributeValues({parcel.id(): attr_luz_max_arp_val})
-                        
+                            if (attr_luz_colID != -1):
+                                attr_luz_val= {attr_luz_colID: max(grouped_luz_types, key=grouped_luz_types.get)}
+                                mem_layer.dataProvider().changeAttributeValues({parcel.id(): attr_luz_val})
+                    
+                            if (attr_luz_max_arp_colID != -1):
+                                attr_luz_max_arp_val = {attr_luz_max_arp_colID: max(grouped_luz_types.values())}
+                                mem_layer.dataProvider().changeAttributeValues({parcel.id(): attr_luz_max_arp_val})
+                            
                     self.iterations += 1
                     # use setProgress to report progress
                     self.setProgress(self.iterations / self.total*100)
